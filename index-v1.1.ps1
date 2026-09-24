@@ -248,11 +248,47 @@ Capture-Screen -FileName "08_Especificacoes_Windows.png"
 # ==================================================================
 Write-RequirementHeader -Codigo "4.1.2(g)" -Descricao "Status do Windows Update"
 
-Write-Host "PS C:\> Get-Service wuauserv" -ForegroundColor White
-$out = (Get-Service wuauserv | Select-Object Status, Name, DisplayName | Format-Table -AutoSize | Out-String)
-Write-Captured $out
+Write-Host "PS C:\> Get-Service wuauserv | Select-Object Status, StartType`n" -ForegroundColor White
+$svc = Get-Service wuauserv -ErrorAction SilentlyContinue
 
-Write-Host "PS C:\> Get-HotFix | Sort-Object InstalledOn -Descending | Select-Object -First 2" -ForegroundColor White
+if ($svc) {
+    # Traduz Status do serviço
+    $mapStatus = @{
+        'Running'       = 'Em execução'
+        'Stopped'       = 'Parado'
+        'Paused'        = 'Pausado'
+        'StartPending'  = 'Iniciando'
+        'StopPending'   = 'Parando'
+        'ContinuePending' = 'Continuando'
+        'PausePending'  = 'Pausando'
+    }
+    # Traduz Tipo de inicialização
+    $mapStart = @{
+        'Automatic'             = 'Automático'
+        'AutomaticDelayedStart' = 'Automático (atraso)'
+        'Manual'                = 'Manual'
+        'Disabled'              = 'Desabilitado'
+        'Boot'                  = 'Boot'
+        'System'                = 'System'
+    }
+
+    $statusRaw = $svc.Status.ToString()
+    $startRaw  = $svc.StartType.ToString()
+    $statusTxt = if ($mapStatus.ContainsKey($statusRaw)) { $mapStatus[$statusRaw] } else { $statusRaw }
+    $startTxt  = if ($mapStart.ContainsKey($startRaw))   { $mapStart[$startRaw] }   else { $startRaw }
+
+    $out = ([PSCustomObject]@{
+        'Servico'              = $svc.Name
+        'Nome de exibicao'     = $svc.DisplayName
+        'Tipo de Servico'      = $statusTxt
+        'Tipo de Inicializacao'= $startTxt
+    } | Format-List | Out-String)
+    Write-Captured $out
+} else {
+    Write-Host "Servico wuauserv NAO ENCONTRADO neste host." -ForegroundColor Red
+}
+
+Write-Host "`nPS C:\> Get-HotFix | Sort-Object InstalledOn -Descending | Select-Object -First 2`n" -ForegroundColor White
 $out = (Get-HotFix | Sort-Object InstalledOn -Descending | Select-Object -First 2 | Format-Table -AutoSize | Out-String)
 Write-Captured $out
 
