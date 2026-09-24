@@ -1,7 +1,7 @@
 # Script de Coleta de Evidências — Auditoria de Conformidade (AR)
 
-> **Versão do script:** 1.1  
-> **Arquivo principal:** `index-v1.1.ps1`
+> **Versão do script:** 1.2  
+> **Arquivo principal:** `index-v1.2.ps1`
 
 ## Visão Geral
 
@@ -30,7 +30,7 @@ Ideal para profissionais de segurança, TI e auditoria que precisam verificar se
 | 6 | 4.1.2(j) | **Configuração NTP / sincronismo de hora** | `w32tm /query /configuration`, `w32tm /query /status`, `w32tm /query /source` |
 | 7 | 4.1.2(i) | **Acesso remoto (RDP) desabilitado** | Registry (`fDenyTSConnections`, `PortNumber`), `Get-Service TermService` |
 | 8 | 4.1.2(g/h) | **Especificações do Windows / Ativação** | `Get-CimInstance Win32_OperatingSystem`, `slmgr.vbs /xpr`, `slmgr.vbs /dli` |
-| 9 | 4.1.2(g) | **Status do Windows Update** | `Get-Service wuauserv`, `Get-HotFix` (2 últimas) |
+| 9 | 4.1.2(g) | **Status do Windows Update** | `Get-Service wuauserv` (com status/tipo em português), `Get-HotFix` (2 últimas) |
 | 10 | 4.1.2(f) | **Proteção de tela e bloqueio de sessão** | Registry (`ScreenSaveActive`, `ScreenSaveTimeOut`, `ScreenSaverIsSecure`, `InactivityTimeoutSecs`) |
 | 11 | 4.1.2(c) | **Diretivas de Logs (Security)** | `Get-WinEvent -ListLog Security` |
 | 12 | 4.1.2(k) | **Serviço de Log de Eventos (EventLog)** | `Get-Service EventLog` |
@@ -51,14 +51,14 @@ Ideal para profissionais de segurança, TI e auditoria que precisam verificar se
 
 ### 1. Download
 
-Salve o arquivo `index-v1.1.ps1` no computador que será auditado.
+Salve o arquivo `index-v1.2.ps1` no computador que será auditado.
 
 ### 2. Execução direta
 
 Abra o PowerShell como **Administrador** e execute:
 
 ```powershell
-.\index-v1.1.ps1
+.\index-v1.2.ps1
 ```
 
 Os resultados serão salvos na pasta padrão:
@@ -70,13 +70,13 @@ C:\Temp\EvidenciasAR\
 ### 3. Pasta de destino personalizada
 
 ```powershell
-.\index-v1.1.ps1 -ScreenshotFolder "D:\Auditoria\Evidencias"
+.\index-v1.2.ps1 -ScreenshotFolder "D:\Auditoria\Evidencias"
 ```
 
 ### 4. Execução com bypass de política (recomendado para estações bloqueadas)
 
 ```powershell
-powershell.exe -ExecutionPolicy Bypass -File ".\index-v1.1.ps1"
+powershell.exe -ExecutionPolicy Bypass -File ".\index-v1.2.ps1"
 ```
 
 ## Saída Gerada
@@ -116,6 +116,7 @@ C:\Temp\EvidenciasAR\
 
 - **Transparência na auditoria:** o script foi projetado para exibir **abertamente** cada comando digitado e sua execução, eliminando qualquer suspeita de manipulação de resultados.
 - **Correção de buffering (v2/v1.1):** toda saída de comando é capturada via `Out-String` e reemitida via `Write-Host`, garantindo que tanto o transcript quanto os screenshots capturem o conteúdo na ordem correta — resolvendo um problema conhecido do `Start-Transcript` com comandos nativos.
+- **Aprimoramento v1.2 — Windows Update (#9):** a verificação do serviço `wuauserv` agora traduz os campos `Status` e `StartType` para português (ex.: `Running` → `Em execução`, `Automatic` → `Automático`), além de exibir nome de exibição e tipo de serviço, melhorando a legibilidade dos relatórios de auditoria.
 - **Filtro auditpol:** a listagem de categorias de auditoria é filtrada estritamente para as categorias relevantes para a política AR, evitando poluição visual.
 - **Valores de registro:** quando uma chave de registro não existe, o script exibe `AUSENTE` em vez de deixar o campo em branco.
 - **Independência de rede:** todas as verificações são **locais**, não dependendo de conectividade com domínio ou servidores externos para sua execução.
@@ -126,6 +127,7 @@ C:\Temp\EvidenciasAR\
 |--------|------|-----------|
 | 1.0 | — | Versão inicial do script de coleta de evidências. |
 | 1.1 | — | Correção de bug de buffering do `Start-Transcript`; correção do filtro do `auditpol` (Logon$ → Logon); remoção de placeholder literal do prompt; valores ausentes no registro agora exibem `AUSENTE`. |
+| 1.2 | — | Aprimoramento do tópico #9 (Windows Update): tradução dos campos `Status` e `StartType` do serviço `wuauserv` para português; adição de `DisplayName` e tipo de serviço na saída; atualização do prompt de comando exibido. |
 
 ## Contribuição
 
