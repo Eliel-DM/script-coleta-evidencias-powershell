@@ -20,23 +20,23 @@ Ideal para profissionais de segurança, TI e auditoria que precisam verificar se
 
 ## Verificações Realizadas
 
-| # | Código | Descrição | Comandos/Fontes |
-|---|--------|-----------|-----------------|
-| 1 | 4.1.1.1 | **Criptografia de disco (BitLocker)** | `manage-bde -status` |
-| 2 | 4.1.2(b) | **Diretivas de senha** | `net accounts` |
-| 3 | 4.1.2(b.2) | **Diretiva de bloqueio de conta** | `secedit /export` + `Select-String "Lockout"` |
-| 4 | 4.1.2(d) | **Estado do Microsoft Defender Antivírus** | `Get-MpComputerStatus` |
-| 5 | 4.1.2(e) | **Firewall do Windows (perfis e ações)** | `Get-NetFirewallProfile` |
-| 6 | 4.1.2(j) | **Configuração NTP / sincronismo de hora** | `w32tm /query /configuration`, `w32tm /query /status`, `w32tm /query /source` |
-| 7 | 4.1.2(i) | **Acesso remoto (RDP) desabilitado** | Registry (`fDenyTSConnections`, `PortNumber`), `Get-Service TermService` |
-| 8 | 4.1.2(g/h) | **Especificações do Windows / Ativação** | `Get-CimInstance Win32_OperatingSystem`, `slmgr.vbs /xpr`, `slmgr.vbs /dli` |
-| 9 | 4.1.2(g) | **Status do Windows Update** | `Get-Service wuauserv` (com status/tipo em português), `Get-HotFix` (2 últimas) |
-| 10 | 4.1.2(f) | **Proteção de tela e bloqueio de sessão** | Registry (`ScreenSaveActive`, `ScreenSaveTimeOut`, `ScreenSaverIsSecure`, `InactivityTimeoutSecs`) |
-| 11 | 4.1.2(c) | **Diretivas de Logs (Security)** | `Get-WinEvent -ListLog Security` |
-| 12 | 4.1.2(k) | **Serviço de Log de Eventos (EventLog)** | `Get-Service EventLog` |
-| 13 | 4.1.2(k.1) | **Auditoria do Windows (auditpol)** | `auditpol /get /category:*` com filtro específico para categorias AR |
-| 14 | 4.1.2(l.1) | **Usuário da sessão interativa ativa** | `Get-CimInstance Win32_Process explorer.exe` + `GetOwner` |
-| 15 | 4.1.2(l.2) | **Grupo de Administradores Locais** | `Get-LocalGroupMember -SID S-1-5-32-544` |
+| #   | Código     | Descrição                                  | Comandos/Fontes                                                                                    |
+| --- | ---------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| 1   | 4.1.1.1    | **Criptografia de disco (BitLocker)**      | `manage-bde -status`                                                                               |
+| 2   | 4.1.2(b)   | **Diretivas de senha**                     | `net accounts`                                                                                     |
+| 3   | 4.1.2(b.2) | **Diretiva de bloqueio de conta**          | `secedit /export` + `Select-String "Lockout"`                                                      |
+| 4   | 4.1.2(d)   | **Estado do Microsoft Defender Antivírus** | `Get-MpComputerStatus`                                                                             |
+| 5   | 4.1.2(e)   | **Firewall do Windows (perfis e ações)**   | `Get-NetFirewallProfile`                                                                           |
+| 6   | 4.1.2(j)   | **Configuração NTP / sincronismo de hora** | `w32tm /query /configuration`, `w32tm /query /status`, `w32tm /query /source`                      |
+| 7   | 4.1.2(i)   | **Acesso remoto (RDP) desabilitado**       | Registry (`fDenyTSConnections`, `PortNumber`), `Get-Service TermService`                           |
+| 8   | 4.1.2(g/h) | **Especificações do Windows / Ativação**   | `Get-CimInstance Win32_OperatingSystem`, `slmgr.vbs /xpr`, `slmgr.vbs /dli`                        |
+| 9   | 4.1.2(g)   | **Status do Windows Update**               | `Get-Service wuauserv` (com status/tipo em português), `Get-HotFix` (2 últimas)                    |
+| 10  | 4.1.2(f)   | **Proteção de tela e bloqueio de sessão**  | Registry (`ScreenSaveActive`, `ScreenSaveTimeOut`, `ScreenSaverIsSecure`, `InactivityTimeoutSecs`) |
+| 11  | 4.1.2(c)   | **Diretivas de Logs (Security)**           | `Get-WinEvent -ListLog Security`                                                                   |
+| 12  | 4.1.2(k)   | **Serviço de Log de Eventos (EventLog)**   | `Get-Service EventLog`                                                                             |
+| 13  | 4.1.2(k.1) | **Auditoria do Windows (auditpol)**        | `auditpol /get /category:*` com filtro específico para categorias AR                               |
+| 14  | 4.1.2(l.1) | **Usuário da sessão interativa ativa**     | `Get-CimInstance Win32_Process explorer.exe` + `GetOwner`                                          |
+| 15  | 4.1.2(l.2) | **Grupo de Administradores Locais**        | `Get-LocalGroupMember -SID S-1-5-32-544`                                                           |
 
 ## Requisitos
 
@@ -123,11 +123,11 @@ C:\Temp\EvidenciasAR\
 
 ## Histórico de Versões
 
-| Versão | Data | Descrição |
-|--------|------|-----------|
-| 1.0 | — | Versão inicial do script de coleta de evidências. |
-| 1.1 | — | Correção de bug de buffering do `Start-Transcript`; correção do filtro do `auditpol` (Logon$ → Logon); remoção de placeholder literal do prompt; valores ausentes no registro agora exibem `AUSENTE`. |
-| 1.2 | — | Aprimoramento do tópico #9 (Windows Update): tradução dos campos `Status` e `StartType` do serviço `wuauserv` para português; adição de `DisplayName` e tipo de serviço na saída; atualização do prompt de comando exibido. |
+| Versão | Data | Descrição                                                                                                                                                                                                                   |
+| ------ | ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1.0    | —    | Versão inicial do script de coleta de evidências.                                                                                                                                                                           |
+| 1.1    | —    | Correção de bug de buffering do `Start-Transcript`; correção do filtro do `auditpol` (Logon$ → Logon); remoção de placeholder literal do prompt; valores ausentes no registro agora exibem `AUSENTE`.                       |
+| 1.2    | —    | Aprimoramento do tópico #9 (Windows Update): tradução dos campos `Status` e `StartType` do serviço `wuauserv` para português; adição de `DisplayName` e tipo de serviço na saída; atualização do prompt de comando exibido. |
 
 ## Contribuição
 

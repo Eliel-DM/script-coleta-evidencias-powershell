@@ -355,37 +355,167 @@ Wait-ForScreen
 Capture-Screen -FileName "13_Auditoria_Windows.png"
 
 # ==================================================================
-#  14. Usuários da Sessão Interativa Ativa
+#  15. Todos os Usuários e Níveis de Acesso
 # ==================================================================
-Write-RequirementHeader -Codigo "4.1.2(l.1)" -Descricao "Usuario da Sessao Interativa Ativa"
-Write-Host "PS C:\> Get-CimInstance Win32_Process -Filter ""Name='explorer.exe'"" | Invoke-CimMethod GetOwner`n" -ForegroundColor White
+Write-RequirementHeader -Codigo "4.1.2(l.2)" -Descricao "Todos os Usuarios e Niveis de Acesso"
+
+# ---------- Identifica o usuario da sessao interativa -------------
+$UsuarioLogado = $null
 $Explorer = Get-CimInstance Win32_Process -Filter "Name='explorer.exe'" -ErrorAction SilentlyContinue | Select-Object -First 1
 if ($Explorer) {
-    $Dono = Invoke-CimMethod -InputObject $Explorer -MethodName GetOwner
-    Write-Host "Usuario: $($Dono.Domain)\$($Dono.User)" -ForegroundColor White
+    $d = Invoke-CimMethod -InputObject $Explorer -MethodName GetOwner
+    $UsuarioLogado = "$($d.Domain)\$($d.User)"
+}
+
+# ---------- Identidade do processo atual (script) -----------------
+$IdentityAtual = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+$SidAtual      = $IdentityAtual.User.Value
+
+# ---------- Mostra os comandos que serao executados ---------------
+Write-Host "PS C:\> Get-LocalGroup" -ForegroundColor White
+Write-Host "PS C:\> Get-LocalGroupMember -Group <cada_grupo>" -ForegroundColor White
+Write-Host "PS C:\> Get-LocalUser" -ForegroundColor White
+Write-Host "PS C:\> Get-CimInstance Win32_Process -Filter ""Name='explorer.exe'"" | Invoke-CimMethod GetOwner" -ForegroundColor White
+Write-Host "PS C:\> Get-LocalGroupMember -SID 'S-1-5-32-544'`n" -ForegroundColor White
+
+Write-Host "Usuario da sessao interativa: $UsuarioLogado" -ForegroundColor Cyan
+Write-Host "Usuario que executa o script: $($IdentityAtual.Name)`n" -ForegroundColor Cyan
+
+# ---------- Verifica se os cmdlets existem ------------------------
+if (-not (Get-Command Get-LocalUser -ErrorAction SilentlyContinue)) {
+    Write-Host "Cmdlets Get-Local* nao disponiveis neste host." -ForegroundColor Yellow
 } else {
-    Write-Host "Nenhuma sessao interativa (explorer.exe) encontrada." -ForegroundColor Red
+    $LocalGroups  = Get-LocalGroup -ErrorAction SilentlyContinue
+    $GroupMembers = @{}
+    foreach ($g in $LocalGroups) {
+        $GroupMembers[$g.Name] = @(
+            Get-LocalGroupMember -Group $g.Name -ErrorAction SilentlyContinue |
+                ForEach-Object { $_.SID.Value }
+        )
+    }
+
+    # Mapeia SIDs de administradores locais (S-1-5-32-544)
+    $AdminsSIDs = @(
+        Get-LocalGroupMember -SID "S-1-5-32-544" -ErrorAction SilentlyContinue |
+            ForEach-Object { $_.SID.Value }
+    )
+
+    $ListaAcesso = @()
+
+    # ---- 1) Contas locais ----------------------------------------
+    foreach ($u in Get-LocalUser -ErrorAction SilentlyContinue) {
+        $UserGroups = @()
+        foreach ($g in $LocalGroups) {
+            if ($GroupMembers[$g.Name] -contains $u.SID.Value) {
+                $UserGroups += $g.Name
+            }
+        }
+
+        $nivel = "Usuario Padrao"
+        if     ($UserGroups -match "Administradores|Administrators") { $nivel = "Administrador" }
+        elseif ($UserGroups -match "Convidados|Guests")              { $nivel = "Convidado" }
+        elseif (-not ($UserGroups -match "Usuarios|Users"))          { $nivel = "Sem grupo padrao" }
+
+        $nomeCompleto = "$($env:COMPUTERNAME)\$($u.Name)"
+        $logadoAgora  = if ($UsuarioLogado -and ($UsuarioLogado -ieq $nomeCompleto)) { ">>> SIM <<<" } else { "" }
+
+        $ListaAcesso += [PSCustomObject]@{
+            "Logado Agora" = $logadoAgora
+            "Usuario"      = $nomeCompleto
+            "Status"       = if ($u.Enabled) { "Ativo" } else { "Inativo" }
+            "Nivel"        = $nivel
+            "Grupos"       = if ($UserGroups.Count -gt 0) { $UserGroups -join ", " } else { "Nenhum" }
+        }
+    }
+
+    # ---- 2) Contas externas (Dominio/AzureAD) --------------------
+    $AdminsExternos = Get-LocalGroupMember -SID "S-1-5-32-544" -ErrorAction SilentlyContinue |
+        Where-Object { $_.PrincipalSource -ne "Local" }
+
+    foreach ($adm in $AdminsExternos) {
+        $sidAdm      = $adm.SID.Value
+        $nomeLegivel = $adm.Name
+
+        # 2.1) Se for a propria identidade do script, usa o nome conhecido
+        if ($sidAdm -eq $SidAtual) {
+            $nomeLegivel = $IdentityAtual.Name
+        }
+        else {
+            # 2.2) Tenta traduzir SID -> NTAccount (contas de dominio)
+            try {
+                $sid = New-Object System.Security.Principal.SecurityIdentifier($sidAdm)
+                $nomeLegivel = $sid.Translate([System.Security.Principal.NTAccount]).Value
+            }
+            catch {
+                # 2.3) Fallback para AzureAD: usa o perfil do usuario
+                try {
+                    $perfil = Get-CimInstance Win32_UserProfile -ErrorAction SilentlyContinue |
+                        Where-Object { $_.SID -eq $sidAdm }
+                    if ($perfil) {
+                        $nomeLegivel = "AzureAD\$((Split-Path $perfil.LocalPath -Leaf))"
+                    } else {
+                        $nomeLegivel = "SID: $sidAdm"
+                    }
+                } catch {
+                    $nomeLegivel = "SID: $sidAdm"
+                }
+            }
+        }
+
+        $logadoAgora = if ($UsuarioLogado -and ($UsuarioLogado -ieq $nomeLegivel)) { ">>> SIM <<<" } else { "" }
+
+        $ListaAcesso += [PSCustomObject]@{
+            "Logado Agora" = $logadoAgora
+            "Usuario"      = $nomeLegivel
+            "Status"       = "Externa ($($adm.PrincipalSource))"
+            "Nivel"        = "Administrador"
+            "Grupos"       = "Administradores Locais"
+        }
+    }
+
+    # ---- 3) Garante que o USUARIO LOGADO sempre apareca ----------
+    if ($UsuarioLogado) {
+        $jaNaLista = $ListaAcesso | Where-Object { $_.Usuario -ieq $UsuarioLogado }
+
+        if (-not $jaNaLista) {
+            # Determina se o usuario logado e admin local (pelo SID)
+            $sidLogado = $null
+            try {
+                $sidLogado = (New-Object System.Security.Principal.NTAccount($UsuarioLogado)).Translate([System.Security.Principal.SecurityIdentifier]).Value
+            } catch { }
+
+            $nivelLogado = "Usuario Padrao (Dominio)"
+            $gruposLogado = "Nenhum grupo local"
+
+            if ($sidLogado -and ($AdminsSIDs -contains $sidLogado)) {
+                $nivelLogado = "Administrador"
+                $gruposLogado = "Administradores Locais"
+            }
+
+            $ListaAcesso += [PSCustomObject]@{
+                "Logado Agora" = ">>> SIM <<<"
+                "Usuario"      = $UsuarioLogado
+                "Status"       = "Ativo (sessao interativa)"
+                "Nivel"        = $nivelLogado
+                "Grupos"       = $gruposLogado
+            }
+        } else {
+            foreach ($item in $ListaAcesso) {
+                if ($item.Usuario -ieq $UsuarioLogado) {
+                    $item.'Logado Agora' = ">>> SIM <<<"
+                }
+            }
+        }
+    }
+
+    $out = ($ListaAcesso |
+            Sort-Object @{Expression={ if ($_.'Logado Agora') {0} else {1} }}, "Usuario" |
+            Format-Table -AutoSize -Wrap | Out-String)
+    Write-Captured $out
 }
 
 Wait-ForScreen
-Capture-Screen -FileName "14_Usuarios_Sessao.png"
-
-# ==================================================================
-#  15. Grupo de Administradores Locais
-# ==================================================================
-Write-RequirementHeader -Codigo "4.1.2(l.2)" -Descricao "Grupo de Administradores Locais"
-Write-Host "PS C:\> Get-LocalGroupMember -SID 'S-1-5-32-544'`n" -ForegroundColor White
-
-$out = (Get-LocalGroupMember -SID "S-1-5-32-544" -ErrorAction SilentlyContinue |
-        Select-Object @{Name="Origem"; Expression={$_.PrincipalSource}},
-                      @{Name="Tipo"; Expression={$_.ObjectClass}},
-                      @{Name="Identidade (Administrador)"; Expression={$_.Name}} |
-        Format-Table -AutoSize | Out-String)
-Write-Captured $out
-
-Wait-ForScreen
-Capture-Screen -FileName "15_Administradores_Locais.png"
-
+Capture-Screen -FileName "15_Todos_Usuarios_Acesso.png"
 # ==================================================================
 #  Finalização da Coleta
 # ==================================================================
