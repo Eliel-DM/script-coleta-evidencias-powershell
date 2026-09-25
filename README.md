@@ -1,11 +1,11 @@
 # Script de Coleta de Evidências — Auditoria de Conformidade (AR)
 
-> **Versão do script:** 1.2  
-> **Arquivo principal:** `index-v1.2.ps1`
+> **Versão do script:** 1.3  
+> **Arquivo principal:** `index-v1.3.ps1`
 
 ## Visão Geral
 
-Script em PowerShell desenvolvido para automatizar a coleta de evidências locais de estações de trabalho com o objetivo de **auditoria de conformidade**. Ele executa verificações em 15 categorias distintas, captura **screenshots** de cada etapa e gera um **log textual** completo, garantindo total transparência sobre os comandos executados e seus resultados.
+Script em PowerShell desenvolvido para automatizar a coleta de evidências locais de estações de trabalho com o objetivo de **auditoria de conformidade**. Ele executa verificações em 14 categorias distintas, captura **screenshots** de cada etapa e gera um **log textual** completo, garantindo total transparência sobre os comandos executados e seus resultados.
 
 Ideal para profissionais de segurança, TI e auditoria que precisam verificar se um computador está em conformidade com políticas de segurança corporativas — como criptografia de disco, diretivas de senha, firewall, proteção contra malware, atualizações, auditoria de logs, bloqueio de sessão, entre outros.
 
@@ -35,8 +35,7 @@ Ideal para profissionais de segurança, TI e auditoria que precisam verificar se
 | 11  | 4.1.2(c)   | **Diretivas de Logs (Security)**           | `Get-WinEvent -ListLog Security`                                                                   |
 | 12  | 4.1.2(k)   | **Serviço de Log de Eventos (EventLog)**   | `Get-Service EventLog`                                                                             |
 | 13  | 4.1.2(k.1) | **Auditoria do Windows (auditpol)**        | `auditpol /get /category:*` com filtro específico para categorias AR                               |
-| 14  | 4.1.2(l.1) | **Usuário da sessão interativa ativa**     | `Get-CimInstance Win32_Process explorer.exe` + `GetOwner`                                          |
-| 15  | 4.1.2(l.2) | **Grupo de Administradores Locais**        | `Get-LocalGroupMember -SID S-1-5-32-544`                                                           |
+| 14  | 4.1.2(l.1/l.2) | **Todos os Usuários e Níveis de Acesso**   | `Get-LocalUser`, `Get-LocalGroup`, `Get-LocalGroupMember`, `Get-CimInstance Win32_Process explorer.exe` + `GetOwner` |
 
 ## Requisitos
 
@@ -51,14 +50,14 @@ Ideal para profissionais de segurança, TI e auditoria que precisam verificar se
 
 ### 1. Download
 
-Salve o arquivo `index-v1.2.ps1` no computador que será auditado.
+Salve o arquivo `index-v1.3.ps1` no computador que será auditado.
 
 ### 2. Execução direta
 
 Abra o PowerShell como **Administrador** e execute:
 
 ```powershell
-.\index-v1.2.ps1
+.\index-v1.3.ps1
 ```
 
 Os resultados serão salvos na pasta padrão:
@@ -70,13 +69,13 @@ C:\Temp\EvidenciasAR\
 ### 3. Pasta de destino personalizada
 
 ```powershell
-.\index-v1.2.ps1 -ScreenshotFolder "D:\Auditoria\Evidencias"
+.\index-v1.3.ps1 -ScreenshotFolder "D:\Auditoria\Evidencias"
 ```
 
 ### 4. Execução com bypass de política (recomendado para estações bloqueadas)
 
 ```powershell
-powershell.exe -ExecutionPolicy Bypass -File ".\index-v1.2.ps1"
+powershell.exe -ExecutionPolicy Bypass -File ".\index-v1.3.ps1"
 ```
 
 ## Saída Gerada
@@ -98,8 +97,7 @@ C:\Temp\EvidenciasAR\
 ├── 11_Diretivas_Logs.png
 ├── 12_Servico_EventLog_1.png
 ├── 13_Auditoria_Windows.png
-├── 14_Usuarios_Sessao.png
-├── 15_Administradores_Locais.png
+├── 15_Todos_Usuarios_Acesso.png
 └── Evidencias_AR_Final_yyyyMMdd_HHmmss.txt   ← log completo
 ```
 
@@ -117,6 +115,7 @@ C:\Temp\EvidenciasAR\
 - **Transparência na auditoria:** o script foi projetado para exibir **abertamente** cada comando digitado e sua execução, eliminando qualquer suspeita de manipulação de resultados.
 - **Correção de buffering (v2/v1.1):** toda saída de comando é capturada via `Out-String` e reemitida via `Write-Host`, garantindo que tanto o transcript quanto os screenshots capturem o conteúdo na ordem correta — resolvendo um problema conhecido do `Start-Transcript` com comandos nativos.
 - **Aprimoramento v1.2 — Windows Update (#9):** a verificação do serviço `wuauserv` agora traduz os campos `Status` e `StartType` para português (ex.: `Running` → `Em execução`, `Automatic` → `Automático`), além de exibir nome de exibição e tipo de serviço, melhorando a legibilidade dos relatórios de auditoria.
+- **Aprimoramento v1.3 — Todos os Usuários e Níveis de Acesso (#14/15):** os tópicos 14 (Usuário da sessão interativa) e 15 (Grupo de Administradores Locais) foram unificados em uma única evidência que lista **todos os usuários** (locais e externos) com seus respectivos níveis de acesso (`Administrador`, `Usuário Padrão`, `Convidado`), status da conta, grupos de pertencimento e indicação clara de quem está logado no momento (`>>> SIM <<<`).
 - **Filtro auditpol:** a listagem de categorias de auditoria é filtrada estritamente para as categorias relevantes para a política AR, evitando poluição visual.
 - **Valores de registro:** quando uma chave de registro não existe, o script exibe `AUSENTE` em vez de deixar o campo em branco.
 - **Independência de rede:** todas as verificações são **locais**, não dependendo de conectividade com domínio ou servidores externos para sua execução.
@@ -128,6 +127,7 @@ C:\Temp\EvidenciasAR\
 | 1.0    | —    | Versão inicial do script de coleta de evidências.                                                                                                                                                                           |
 | 1.1    | —    | Correção de bug de buffering do `Start-Transcript`; correção do filtro do `auditpol` (Logon$ → Logon); remoção de placeholder literal do prompt; valores ausentes no registro agora exibem `AUSENTE`.                       |
 | 1.2    | —    | Aprimoramento do tópico #9 (Windows Update): tradução dos campos `Status` e `StartType` do serviço `wuauserv` para português; adição de `DisplayName` e tipo de serviço na saída; atualização do prompt de comando exibido. |
+| 1.3    | —    | Unificação dos tópicos #14 e #15 em uma única evidência "Todos os Usuários e Níveis de Acesso": lista todos os usuários locais e externos com nível de acesso, status, grupos e identificação do usuário logado. |
 
 ## Contribuição
 
